@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta window="viewport" content="initial-scale=1.0">
+        <title>Landmarks</title>
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>
+        <link rel="stylesheet" href="/static/landmarks_styles.css" />
+        <script src="/static/mapcode.js"></script>
+
+    </head>
+
+    <body onload=initializeMap()>
+        <div id="buttons">
+            <button class="button" onclick=togglePeople()>People</button>
+            <button class="button" onclick=toggleLandmarks()>Landmarks</button>
+        </div>
+        <div id="map"></div>
+    </body>
+
+
+</html>

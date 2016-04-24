@@ -1,0 +1,23 @@
+{
+    "name": "landmarksAPI",
+    "version": "0.0.1",
+    "description": "Provides geolocation information on nearby landmarks",
+    "main": "landmarksAPI.js",
+    "scripts": {
+        "start": "node landmarksAPI.js"
+    },
+    "dependencies": {
+        "express": "latest",
+        "body-parser": "latest",
+        "mongodb": "latest",
+        "fs": "latest"
+    },
+    "engines": {
+        "nodejs": "latest",
+        "npm": "latest"
+    },
+    "keywords": [
+        "node",
+        "express"
+    ]
+}

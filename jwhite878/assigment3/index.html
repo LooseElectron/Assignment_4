@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+
+<html>
+
+	<head>
+		<title>Landmarks</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+		<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>
+		<link rel="stylesheet" href="style.css" />
+		
+		<script>
+
+			var myLat = 0;
+			var myLng = 0;
+			var closestLandmark = "";
+			var closestDistance = 0;
+			var closestLat = 0;
+			var closestLng = 0;
+			var parsed;
+			var request = new XMLHttpRequest();
+			var me = new google.maps.LatLng(myLat, myLng);
+			var myOptions = {
+				zoom: 13,
+				center: me,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			};
+			var map;
+			var infowindow = new google.maps.InfoWindow();
+
+			//Converts and returns ang from degrees to radians.
+			function toRad(ang){
+   				return ang * Math.PI / 180;
+			}	
+			
+			// Returns distance in miles between two points on the Earth, given by latitude and longitude
+			function calcDistance(lat1, lon1, lat2, lon2){
+				var radius = 6371; // in km, radius of earth 
+				var x1 = lat2-lat1;
+				var dLat = toRad(x1);  
+				var x2 = lon2-lon1;
+				var dLon = toRad(x2);  
+				var a = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+               			Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+               	 		Math.sin(dLon/2) * Math.sin(dLon/2);  
+				var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+				var distance = radius * c; // in km
+				return distance * 0.62; // in mi
+			}
+			
+			function init()
+			{
+				map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+				getMyLocation();
+			}
+			
+			// Gets current locaiton, calls getData
+			function getMyLocation() {
+				if (navigator.geolocation) { // the navigator.geolocation object is supported on your browser
+					navigator.geolocation.getCurrentPosition(function(position) {
+						myLat = position.coords.latitude;
+						myLng = position.coords.longitude;
+						getData(); 
+					});
+				}
+				else {
+					alert("Geolocation is not supported by your web browser.");
+				}
+			}
+			
+			// Retreives JSON data herokuapp server, calls renderMap
+			function getData() {			
+				var http = new XMLHttpRequest();
+				var url = "http://immense-cove-70122.herokuapp.com/sendLocation";
+				var params = "login=PATRICA_WATKINS&lat=" + myLat + "&lng=" + myLng;
+				http.open("POST", url, true);
+				
+				http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+				http.onreadystatechange = function() {//Call a function when the state changes.
+    					if(http.readyState == 4 && http.status == 200) {
+        					parsed = JSON.parse(http.responseText);
+        					renderMap(); // Render the map with retreived data
+   					}
+				}
+				http.send(params);
+				
+			}
+			
+			// Renders map, and all markers
+			function renderMap()
+			{
+				// Create and display markers for landmarks
+				for  (i = 0; i < parsed['landmarks'].length; i++) {
+					newLatLng = new google.maps.LatLng(parsed['landmarks'][i]['geometry']['coordinates'][1], parsed['landmarks'][i]['geometry']['coordinates'][0]);
+        		    newMarker = new google.maps.Marker({
+						position: newLatLng,
+						title: parsed['landmarks'][i]['properties']['Details'],
+						icon: 'images/landmark.png'
+					});
+					newMarker.setMap(map);
+					// Open info window on click of marker
+					google.maps.event.addListener(newMarker, 'click', function() {
+						infowindow.setContent(this.title);
+						infowindow.open(map, this);
+					});
+					landmarkDistance = calcDistance(newLatLng.lat(), newLatLng.lng(), myLat, myLng);
+					// Check to see if landmark is closest;
+					if(i == 0 || landmarkDistance < closestDistance) {
+						closestDistance = landmarkDistance;
+						closestLandmark = parsed['landmarks'][i]['properties']['Location_Name'];
+						closestLat = parsed['landmarks'][i]['geometry']['coordinates'][1];
+						closestLng = parsed['landmarks'][i]['geometry']['coordinates'][0];
+					}
+				}
+				me = new google.maps.LatLng(myLat, myLng);
+				
+				// Update map and go to user
+				map.panTo(me);
+	
+				// Create and display marker for user
+				meMarker = new google.maps.Marker({
+					position: me,
+					title: "I am PATRICA_WATKINS. The closest landmark to me is " + closestLandmark + " and it is "  + closestDistance + " miles away.",
+					icon:'images/ODST_small.png'
+				});
+				meMarker.setMap(map);
+					
+				// Open info window on click of marker
+				google.maps.event.addListener(meMarker, 'click', function() {
+					infowindow.setContent(meMarker.title);
+					infowindow.open(map, meMarker);
+				});
+
+				// Create polyline from user to nearest landmark
+				var pathToClosest = [
+    				{lat: myLat, lng: myLng},
+    			  	{lat: closestLat, lng: closestLng},
+    				];
+				var pathPolyline = new google.maps.Polyline({
+    				path: pathToClosest,
+    				geodesic: true,
+    				strokeColor: '#FF0000',
+    				strokeOpacity: 1.0,
+    				strokeWeight: 2
+  				}); 
+  				pathPolyline.setMap(map); //Display the polyline
+					
+				// Create and deisplay markers for people
+				for  (i = 0; i < parsed['people'].length; i++) {
+					if  (parsed['people'][i]['login'] != "PATRICA_WATKINS") { // avoid displaying self twice
+						newLatLng = new google.maps.LatLng(parsed['people'][i]['lat'], parsed['people'][i]['lng']);
+	        		    newMarker = new google.maps.Marker({
+							position: newLatLng,
+							title: parsed['people'][i]['login'] + " is " + calcDistance(newLatLng.lat(), newLatLng.lng(), myLat, myLng) + " miles away from you.",
+							icon: 'images/person.png'
+							});
+						newMarker.setMap(map);
+						// Open info window on click of marker
+						google.maps.event.addListener(newMarker, 'click', function() {
+							infowindow.setContent(this.title);
+							infowindow.open(map, this);
+						});
+					}
+				}
+
+			}
+
+		</script>
+	</head>
+	
+	<body onload="init()">
+		<div id="map_canvas"></div>
+	</body>
+</html>
